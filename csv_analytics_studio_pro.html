@@ -1,0 +1,1975 @@
+<!DOCTYPE html>
+<html lang="ja" class="h-full bg-slate-950 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV DataAnalytics Studio Pro | 高自由度・統計分析 & マーケティング分析</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdfa',
+                            100: '#ccfbf1',
+                            400: '#2dd4bf',
+                            500: '#14b8a6',
+                            600: '#0d9488',
+                            700: '#0f766e',
+                            800: '#115e59',
+                            900: '#134e4a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- PapaParse CSV Parser -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Simple Statistics Library -->
+    <script src="https://unpkg.com/simple-statistics@7.8.3/dist/simple-statistics.min.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.2s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col bg-slate-950 text-slate-100 antialiased selection:bg-brand-500 selection:text-white">
+
+    <!-- Top Navigation Header -->
+    <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-30 shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <!-- Logo & Title -->
+                <div class="flex items-center space-x-3 cursor-pointer" onclick="resetApp()">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 via-teal-500 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-brand-500/20">
+                        <i class="fa-solid fa-chart-pie text-lg"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-400 via-teal-300 to-indigo-300">
+                                DataAnalytics Studio Pro
+                            </span>
+                            <span class="text-[10px] bg-brand-500/20 text-brand-300 border border-brand-500/30 px-1.5 py-0.5 rounded font-mono font-medium">Research & Mktg Edition</span>
+                        </div>
+                        <span class="text-[10px] text-slate-400 block -mt-1 font-mono">100% Client-Side Safe • High Degree of Freedom</span>
+                    </div>
+                </div>
+
+                <!-- Global Actions -->
+                <div class="flex items-center space-x-2 sm:space-x-3">
+                    <button id="btn-filter-toggle" onclick="toggleFilterDrawer()" class="hidden px-3 py-1.5 text-xs font-semibold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all flex items-center space-x-1.5">
+                        <i class="fa-solid fa-filter text-amber-400"></i>
+                        <span>フィルタ/変換</span>
+                        <span id="filter-badge-count" class="hidden bg-amber-500 text-slate-950 font-bold rounded-full w-4 h-4 flex items-center justify-center text-[10px]">0</span>
+                    </button>
+
+                    <button id="btn-export-hub" onclick="openExportModal()" class="hidden px-3 py-1.5 text-xs font-semibold rounded-xl bg-brand-600 hover:bg-brand-500 text-white transition-all shadow-sm flex items-center space-x-1.5">
+                        <i class="fa-solid fa-file-export"></i>
+                        <span class="hidden sm:inline">エクスポート</span>
+                    </button>
+
+                    <button id="btn-reset-data" onclick="resetApp()" class="hidden px-3 py-1.5 text-xs font-semibold rounded-xl bg-slate-800 hover:bg-rose-950 hover:text-rose-300 text-slate-400 border border-slate-700 transition-all">
+                        <i class="fa-solid fa-rotate-left sm:mr-1"></i><span class="hidden sm:inline">クリア</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 space-y-2 pointer-events-none"></div>
+
+    <!-- Data Filter & Transformation Drawer -->
+    <div id="filter-drawer" class="hidden bg-slate-900 border-b border-slate-800 shadow-2xl p-4 sm:p-6 transition-all duration-300 animate-fade-in">
+        <div class="max-w-7xl mx-auto space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                <h3 class="text-sm font-bold text-slate-100 flex items-center">
+                    <i class="fa-solid fa-sliders text-amber-400 mr-2"></i>データクレンジング・抽出条件設定
+                </h3>
+                <div class="flex items-center space-x-2">
+                    <button onclick="applyFilters()" class="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg transition-all">
+                        条件を適用
+                    </button>
+                    <button onclick="resetFilters()" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg border border-slate-700">
+                        リセット
+                    </button>
+                    <button onclick="toggleFilterDrawer()" class="text-slate-400 hover:text-slate-200 text-sm pl-2">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Rules Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                <!-- Condition 1: Range / Value Filter -->
+                <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800 space-y-2">
+                    <span class="font-bold text-amber-400 block"><i class="fa-solid fa-filter mr-1"></i>数値・カテゴリ絞り込み</span>
+                    <select id="filter-col-select" onchange="updateFilterValueOptions()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-200">
+                        <!-- Dynamic -->
+                    </select>
+                    <div class="flex space-x-2">
+                        <select id="filter-op-select" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-200 w-1/3">
+                            <option value="equals">一致 (=)</option>
+                            <option value="gt">より大きい (&gt;)</option>
+                            <option value="lt">より小さい (&lt;)</option>
+                            <option value="contains">含む (Contains)</option>
+                            <option value="not_null">空でない (Not Null)</option>
+                        </select>
+                        <input type="text" id="filter-val-input" placeholder="フィルター値..." class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-200 flex-1">
+                    </div>
+                </div>
+
+                <!-- Condition 2: Variable Type Override -->
+                <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800 space-y-2">
+                    <span class="font-bold text-brand-400 block"><i class="fa-solid fa-repeat mr-1"></i>変数の型変更 (Override Type)</span>
+                    <p class="text-[11px] text-slate-400">IDなどの数値列をカテゴリとして扱いたい場合に変更します。</p>
+                    <div class="flex space-x-2">
+                        <select id="override-col-select" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-200 flex-1">
+                            <!-- Dynamic -->
+                        </select>
+                        <select id="override-type-select" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-200 w-1/3">
+                            <option value="numeric">数値 (Numeric)</option>
+                            <option value="categorical">カテゴリ (Qualitative)</option>
+                        </select>
+                        <button onclick="applyColumnTypeOverride()" class="px-3 py-1 bg-brand-600 hover:bg-brand-500 text-white rounded-lg text-xs font-bold">
+                            変更
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Condition 3: Feature Creation / Transformation -->
+                <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800 space-y-2">
+                    <span class="font-bold text-cyan-400 block"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>派生変数生成 (Feature Engineering)</span>
+                    <p class="text-[11px] text-slate-400">数値の対数変換 `Log(x)` や標準化 `Z-score` 列を追加します。</p>
+                    <div class="flex space-x-2">
+                        <select id="transform-col-select" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-200 flex-1">
+                            <!-- Dynamic -->
+                        </select>
+                        <select id="transform-type-select" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-200 w-1/3">
+                            <option value="log">Log10(x)</option>
+                            <option value="zscore">Z-Score</option>
+                            <option value="bin">年代/3分割</option>
+                        </select>
+                        <button onclick="createDerivedColumn()" class="px-3 py-1 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-xs font-bold">
+                            生成
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col space-y-6">
+
+        <!-- VIEW 1: Upload Dropzone View -->
+        <section id="dropzone-section" class="flex-1 flex flex-col justify-center items-center py-10 animate-fade-in">
+            <div class="max-w-2xl w-full space-y-6">
+                <!-- Drop Box -->
+                <div id="drop-area" class="border-2 border-dashed border-slate-700 hover:border-brand-500 bg-slate-900/60 hover:bg-slate-900/90 rounded-3xl p-8 sm:p-12 text-center transition-all cursor-pointer shadow-2xl relative overflow-hidden group">
+                    <input type="file" id="csv-file-input" accept=".csv, .tsv, .txt" class="hidden" onchange="handleFileSelect(event)">
+                    
+                    <div class="w-20 h-20 rounded-2xl bg-gradient-to-tr from-brand-500/20 to-indigo-500/20 text-brand-400 flex items-center justify-center mx-auto mb-6 text-3xl group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-file-csv"></i>
+                    </div>
+
+                    <h2 class="text-2xl font-bold text-slate-100 mb-2">CSV / TSV ファイルをドロップ</h2>
+                    <p class="text-slate-400 text-sm mb-6">研究論文データ、アンケート調査、EC・マーケティングログの分析に最適</p>
+
+                    <div class="inline-flex items-center space-x-2 px-4 py-2 rounded-xl bg-slate-800/80 border border-slate-700 text-xs text-slate-300 font-medium">
+                        <i class="fa-solid fa-shield-halved text-emerald-400"></i>
+                        <span>完全ローカル処理。サーバー送信一切なしで情報漏洩を防止</span>
+                    </div>
+                </div>
+
+                <!-- Datasets Selector -->
+                <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-lg">
+                    <div class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center justify-between">
+                        <span><i class="fa-solid fa-flask text-amber-400 mr-1.5"></i>研究・マーケティング開発用サンプルデータ</span>
+                        <span class="text-[10px] text-slate-500">ワンクリックで読み込み</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <button onclick="loadSampleDataset('marketing')" class="p-3 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-left transition-all group">
+                            <div class="text-xs font-bold text-brand-400 group-hover:text-brand-300 flex items-center">
+                                <i class="fa-solid fa-bullhorn mr-1.5"></i>マーケティング・広告効果
+                            </div>
+                            <div class="text-[10px] text-slate-400 mt-1">チャネル別広告費, CVR, 年齢, 購買額 (N=300)</div>
+                        </button>
+
+                        <button onclick="loadSampleDataset('survey')" class="p-3 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-left transition-all group">
+                            <div class="text-xs font-bold text-purple-400 group-hover:text-purple-300 flex items-center">
+                                <i class="fa-solid fa-square-poll-vertical mr-1.5"></i>製品満足度 & NPS調査
+                            </div>
+                            <div class="text-[10px] text-slate-400 mt-1">年代, 性別, 満足度5段階, NPS, 継続意向</div>
+                        </button>
+
+                        <button onclick="loadSampleDataset('experiment')" class="p-3 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-left transition-all group">
+                            <div class="text-xs font-bold text-indigo-400 group-hover:text-indigo-300 flex items-center">
+                                <i class="fa-solid fa-microscope mr-1.5"></i>学術実験・心理測定
+                            </div>
+                            <div class="text-[10px] text-slate-400 mt-1">実験群/統制群, 反応時間, 正答率, ストレス指標</div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 2: Interactive Dashboard View -->
+        <section id="dashboard-section" class="hidden flex-1 flex flex-col space-y-6 animate-fade-in">
+
+            <!-- Dataset Metadata Header Bar -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 shadow-lg">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-lg shrink-0 border border-emerald-500/20">
+                        <i class="fa-solid fa-database"></i>
+                    </div>
+                    <div class="overflow-hidden">
+                        <div class="flex items-center space-x-2">
+                            <h2 id="dataset-filename" class="text-base font-bold text-slate-100 truncate">data.csv</h2>
+                            <span id="active-filter-indicator" class="hidden text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded font-mono">フィルタ適用中</span>
+                        </div>
+                        <div class="flex items-center space-x-3 text-xs text-slate-400 mt-0.5">
+                            <span id="meta-row-count"><i class="fa-solid fa-bars-staggered mr-1"></i>0 行</span>
+                            <span>•</span>
+                            <span id="meta-col-count"><i class="fa-solid fa-columns mr-1"></i>0 列</span>
+                            <span>•</span>
+                            <span id="meta-numeric-count" class="text-brand-400 font-medium">数値: 0</span>
+                            <span>•</span>
+                            <span id="meta-cat-count" class="text-purple-400 font-medium">カテゴリ: 0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Analysis Mode Navigation Tabs -->
+                <div class="flex bg-slate-950 p-1.5 rounded-xl border border-slate-800 overflow-x-auto custom-scrollbar max-w-full">
+                    <button id="tab-btn-summary" onclick="switchDashboardTab('summary')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 text-brand-400 shadow-sm transition-all whitespace-nowrap">
+                        <i class="fa-solid fa-calculator mr-1.5"></i>記述統計
+                    </button>
+                    <button id="tab-btn-pivot" onclick="switchDashboardTab('pivot')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg text-slate-400 hover:text-slate-200 transition-all whitespace-nowrap">
+                        <i class="fa-solid fa-table-cells-large mr-1.5"></i>ピボット集計
+                    </button>
+                    <button id="tab-btn-charts" onclick="switchDashboardTab('charts')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg text-slate-400 hover:text-slate-200 transition-all whitespace-nowrap">
+                        <i class="fa-solid fa-chart-line mr-1.5"></i>高機能グラフ
+                    </button>
+                    <button id="tab-btn-correlation" onclick="switchDashboardTab('correlation')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg text-slate-400 hover:text-slate-200 transition-all whitespace-nowrap">
+                        <i class="fa-solid fa-grip-vertical mr-1.5"></i>相関行列
+                    </button>
+                    <button id="tab-btn-tests" onclick="switchDashboardTab('tests')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg text-slate-400 hover:text-slate-200 transition-all whitespace-nowrap">
+                        <i class="fa-solid fa-flask-vial mr-1.5"></i>統計検定・回帰
+                    </button>
+                    <button id="tab-btn-table" onclick="switchDashboardTab('table')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg text-slate-400 hover:text-slate-200 transition-all whitespace-nowrap">
+                        <i class="fa-solid fa-table mr-1.5"></i>データグリッド
+                    </button>
+                </div>
+            </div>
+
+            <!-- TAB 1: Descriptive Statistics (記述統計 & 変数分布) -->
+            <div id="tab-summary" class="space-y-6">
+                <!-- Summary KPI Cards -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div class="bg-slate-900/80 border border-slate-800 p-4 rounded-2xl shadow-sm">
+                        <div class="text-xs font-medium text-slate-400">有効サンプル数 (N)</div>
+                        <div id="kpi-total-records" class="text-2xl font-bold text-slate-100 mt-1">0</div>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-800 p-4 rounded-2xl shadow-sm">
+                        <div class="text-xs font-medium text-slate-400">総変数 (列) 数</div>
+                        <div id="kpi-total-columns" class="text-2xl font-bold text-brand-400 mt-1">0</div>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-800 p-4 rounded-2xl shadow-sm">
+                        <div class="text-xs font-medium text-slate-400">数値変数 (Quant)</div>
+                        <div id="kpi-num-columns" class="text-2xl font-bold text-cyan-400 mt-1">0</div>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-800 p-4 rounded-2xl shadow-sm">
+                        <div class="text-xs font-medium text-slate-400">カテゴリ変数 (Qual)</div>
+                        <div id="kpi-cat-columns" class="text-2xl font-bold text-purple-400 mt-1">0</div>
+                    </div>
+                </div>
+
+                <!-- Numeric Variables Descriptive Table -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
+                    <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+                        <h3 class="font-bold text-slate-100 flex items-center text-sm">
+                            <i class="fa-solid fa-list-check text-brand-400 mr-2"></i>数値変数の基本統計一覧（Descriptive Statistics）
+                        </h3>
+                        <span class="text-xs text-slate-500">平均 / 95%信頼区間 / 標準偏差 / 四分位点 / 歪度</span>
+                    </div>
+                    <div class="overflow-x-auto custom-scrollbar">
+                        <table class="w-full text-left text-xs text-slate-300">
+                            <thead class="bg-slate-950 text-slate-400 uppercase font-mono border-b border-slate-800">
+                                <tr>
+                                    <th class="px-4 py-3.5 sticky left-0 bg-slate-950 font-bold text-slate-200">変数名</th>
+                                    <th class="px-4 py-3.5">サンプル (N)</th>
+                                    <th class="px-4 py-3.5">欠損率 (%)</th>
+                                    <th class="px-4 py-3.5 font-bold text-brand-400">平均値 (Mean)</th>
+                                    <th class="px-4 py-3.5 text-teal-300">95% CI (±)</th>
+                                    <th class="px-4 py-3.5 font-bold text-cyan-400">中央値 (Median)</th>
+                                    <th class="px-4 py-3.5">標準偏差 (SD)</th>
+                                    <th class="px-4 py-3.5">最小値 (Min)</th>
+                                    <th class="px-4 py-3.5">25% (Q1)</th>
+                                    <th class="px-4 py-3.5">75% (Q3)</th>
+                                    <th class="px-4 py-3.5">最大値 (Max)</th>
+                                    <th class="px-4 py-3.5">歪度 (Skewness)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="summary-stats-tbody" class="divide-y divide-slate-800/60">
+                                <!-- Dynamic Rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Categorical Variables Overview Grid -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg">
+                    <h3 class="font-bold text-slate-100 flex items-center text-sm mb-4">
+                        <i class="fa-solid fa-tags text-purple-400 mr-2"></i>カテゴリ変数の内訳（Categorical Summary）
+                    </h3>
+                    <div id="categorical-summary-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <!-- Dynamic Categorical Cards -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: Pivot & Segment Aggregation (ピボット分析) -->
+            <div id="tab-pivot" class="hidden space-y-6">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg space-y-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-800 gap-4">
+                        <div>
+                            <h3 class="font-bold text-slate-100 flex items-center text-sm">
+                                <i class="fa-solid fa-table-cells-large text-brand-400 mr-2"></i>クロス集計 & セグメント別集計 (Pivot Aggregation)
+                            </h3>
+                            <p class="text-xs text-slate-400 mt-1">マーケティングチャネル別売上や、実験群別の平均スコアなどを高速集計します。</p>
+                        </div>
+                    </div>
+
+                    <!-- Pivot Config Controls -->
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs">
+                        <div>
+                            <label class="block text-slate-400 mb-1 font-bold">行グループ (Row Group):</label>
+                            <select id="pivot-row-select" onchange="renderPivotTable()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-200">
+                                <!-- Options -->
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-slate-400 mb-1 font-bold">列グループ (Col Group / 任意):</label>
+                            <select id="pivot-col-select" onchange="renderPivotTable()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-200">
+                                <option value="">(なし - 1次元集計)</option>
+                                <!-- Options -->
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-slate-400 mb-1 font-bold">集計対象数値 (Value):</label>
+                            <select id="pivot-val-select" onchange="renderPivotTable()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-200">
+                                <!-- Options -->
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-slate-400 mb-1 font-bold">集計方法 (Aggregation):</label>
+                            <select id="pivot-agg-select" onchange="renderPivotTable()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-200">
+                                <option value="mean">平均値 (Mean)</option>
+                                <option value="sum">合計値 (Sum)</option>
+                                <option value="count">データ件数 (Count)</option>
+                                <option value="median">中央値 (Median)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Pivot Table View Area -->
+                    <div class="overflow-x-auto custom-scrollbar">
+                        <div id="pivot-table-container">
+                            <!-- Injected Table -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: Visualizations Studio (高度グラフィック視覚化) -->
+            <div id="tab-charts" class="hidden space-y-6">
+                <!-- Controls Grid -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">X軸 / 主変数:</label>
+                            <select id="chart-column-select" onchange="renderSelectedChart()" class="bg-slate-950 border border-slate-700 text-slate-200 text-xs rounded-xl px-3 py-2">
+                                <!-- Dynamic -->
+                            </select>
+                        </div>
+
+                        <div id="chart-y-var-wrapper">
+                            <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Y軸 / 第2変数:</label>
+                            <select id="chart-column-select-y" onchange="renderSelectedChart()" class="bg-slate-950 border border-slate-700 text-slate-200 text-xs rounded-xl px-3 py-2">
+                                <!-- Dynamic -->
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="text-[10px] font-bold text-amber-400 uppercase block mb-1"><i class="fa-solid fa-palette mr-1"></i>グループ色分け (Hue):</label>
+                            <select id="chart-column-select-hue" onchange="renderSelectedChart()" class="bg-slate-950 border border-amber-500/40 text-amber-300 text-xs rounded-xl px-3 py-2">
+                                <option value="">(色分けなし)</option>
+                                <!-- Category Dynamic -->
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Chart Type Selector -->
+                    <div class="flex items-center space-x-2 self-end md:self-center overflow-x-auto max-w-full">
+                        <button onclick="setChartType('histogram')" id="chart-btn-histogram" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-600 text-white whitespace-nowrap">ヒストグラム</button>
+                        <button onclick="setChartType('scatter')" id="chart-btn-scatter" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 whitespace-nowrap">散布図</button>
+                        <button onclick="setChartType('bar')" id="chart-btn-bar" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 whitespace-nowrap">棒グラフ</button>
+                        <button onclick="setChartType('radar')" id="chart-btn-radar" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 whitespace-nowrap">レーダーチャート</button>
+                    </div>
+                </div>
+
+                <!-- Regression / Stats Info Banner for Scatter -->
+                <div id="scatter-regression-container" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-md flex items-center justify-between text-xs font-mono text-cyan-400">
+                    <span id="scatter-regression-info">回帰式: -</span>
+                    <button onclick="downloadChartImage()" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 font-sans text-xs">
+                        <i class="fa-solid fa-download mr-1"></i>画像保存
+                    </button>
+                </div>
+
+                <!-- Main Chart Canvas View Box -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg">
+                    <div class="relative h-[420px] w-full flex items-center justify-center">
+                        <canvas id="main-analytics-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 4: Correlation Matrix & Pair Analysis -->
+            <div id="tab-correlation" class="hidden space-y-6">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-800 mb-6 gap-2">
+                        <div>
+                            <h3 class="font-bold text-slate-100 flex items-center text-sm">
+                                <i class="fa-solid fa-grip-vertical text-cyan-400 mr-2"></i>相関係数行列 (Pearson / Spearman Correlation)
+                            </h3>
+                            <p class="text-xs text-slate-400 mt-1">変数間の直線的関連度（-1.00 〜 +1.00）をリアルタイムカラーヒートマップで表示します。</p>
+                        </div>
+                        <div class="flex items-center space-x-3 text-xs">
+                            <span class="flex items-center"><span class="w-3 h-3 bg-rose-500 rounded-sm mr-1"></span>正の相関 (+1)</span>
+                            <span class="flex items-center"><span class="w-3 h-3 bg-slate-800 border border-slate-700 rounded-sm mr-1"></span>無相関 (0)</span>
+                            <span class="flex items-center"><span class="w-3 h-3 bg-sky-500 rounded-sm mr-1"></span>負の相関 (-1)</span>
+                        </div>
+                    </div>
+
+                    <!-- Heatmap Container -->
+                    <div class="overflow-x-auto custom-scrollbar">
+                        <div id="correlation-heatmap-matrix" class="min-w-[500px]">
+                            <!-- Matrix Table Injected -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- High Correlation Pairs Ranking -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg">
+                    <h4 class="font-bold text-slate-100 text-sm mb-3">強い相関が見られる変数ペアランキング（|r| ≥ 0.4）</h4>
+                    <div id="high-correlation-pairs" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <!-- Dynamic list -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 5: Hypothesis Testing & Regression Engine -->
+            <div id="tab-tests" class="hidden space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                    <!-- Test 1: Two-Sample t-Test / Welch's t-Test -->
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg flex flex-col justify-between space-y-4">
+                        <div>
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="font-bold text-slate-100 text-sm flex items-center">
+                                    <i class="fa-solid fa-vial text-brand-400 mr-2"></i>2群の平均値差の検定 (t-Test)
+                                </h3>
+                                <span class="text-[10px] bg-brand-500/10 text-brand-400 border border-brand-500/20 px-2 py-0.5 rounded font-mono">Student / Welch</span>
+                            </div>
+                            <p class="text-xs text-slate-400 mb-4">
+                                ABテスト結果や男女差、介入前後の平均値に統計的有意差があるかを検定します。
+                            </p>
+
+                            <div class="space-y-3 text-xs">
+                                <div>
+                                    <label class="block text-slate-400 mb-1">2区分のグループ変数:</label>
+                                    <select id="ttest-group-var" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-slate-200">
+                                        <!-- Category Options -->
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-slate-400 mb-1">検証したい数値変数:</label>
+                                    <select id="ttest-num-var" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-slate-200">
+                                        <!-- Numeric Options -->
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pt-4 border-t border-slate-800">
+                            <button onclick="runTTest()" class="w-full bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold py-2.5 rounded-xl transition-all shadow-md">
+                                t検定を実行する
+                            </button>
+                            <div id="ttest-result-output" class="hidden mt-4 p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono space-y-1">
+                                <!-- Results -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Test 2: One-Way ANOVA (分散分析) -->
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg flex flex-col justify-between space-y-4">
+                        <div>
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="font-bold text-slate-100 text-sm flex items-center">
+                                    <i class="fa-solid fa-layer-group text-indigo-400 mr-2"></i>一元配置分散分析 (ANOVA)
+                                </h3>
+                                <span class="text-[10px] bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded font-mono">F-Test</span>
+                            </div>
+                            <p class="text-xs text-slate-400 mb-4">
+                                3つ以上のグループ（例: 地域A/B/C、年代別など）の平均値に全体として差があるかを評価します。
+                            </p>
+
+                            <div class="space-y-3 text-xs">
+                                <div>
+                                    <label class="block text-slate-400 mb-1">多区分のグループ変数:</label>
+                                    <select id="anova-group-var" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-slate-200">
+                                        <!-- Category Options -->
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-slate-400 mb-1">検証したい数値変数:</label>
+                                    <select id="anova-num-var" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-slate-200">
+                                        <!-- Numeric Options -->
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pt-4 border-t border-slate-800">
+                            <button onclick="runANOVA()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-2.5 rounded-xl transition-all shadow-md">
+                                分散分析を実行する
+                            </button>
+                            <div id="anova-result-output" class="hidden mt-4 p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono space-y-1">
+                                <!-- Results -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Test 3: Chi-Square Test (カイ二乗検定) -->
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg flex flex-col justify-between space-y-4">
+                        <div>
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="font-bold text-slate-100 text-sm flex items-center">
+                                    <i class="fa-solid fa-table-cells text-purple-400 mr-2"></i>独立性の検定 (カイ二乗検定)
+                                </h3>
+                                <span class="text-[10px] bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded font-mono">Chi-Square</span>
+                            </div>
+                            <p class="text-xs text-slate-400 mb-4">
+                                2つのカテゴリ変数（例: 性別 × 購買商品の選択傾向）の間の独立性・連関を検定します。
+                            </p>
+
+                            <div class="space-y-3 text-xs">
+                                <div>
+                                    <label class="block text-slate-400 mb-1">カテゴリ変数 A (行):</label>
+                                    <select id="chisq-var-a" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-slate-200">
+                                        <!-- Category Options -->
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-slate-400 mb-1">カテゴリ変数 B (列):</label>
+                                    <select id="chisq-var-b" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-slate-200">
+                                        <!-- Category Options -->
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pt-4 border-t border-slate-800">
+                            <button onclick="runChiSquareTest()" class="w-full bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold py-2.5 rounded-xl transition-all shadow-md">
+                                カイ二乗検定を実行する
+                            </button>
+                            <div id="chisq-result-output" class="hidden mt-4 p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono space-y-1">
+                                <!-- Results -->
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Multiple Linear Regression Model Section -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg space-y-4">
+                    <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                        <div>
+                            <h3 class="font-bold text-slate-100 flex items-center text-sm">
+                                <i class="fa-solid fa-chart-diagram text-cyan-400 mr-2"></i>重回帰分析モデル (Multiple Linear Regression)
+                            </h3>
+                            <p class="text-xs text-slate-400 mt-0.5">目的変数 Y に対する複数の説明変数 X の貢献度と決定係数 $R^2$ を算出します。</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                        <div>
+                            <label class="block text-slate-400 mb-1 font-bold">目的変数 (Target Y):</label>
+                            <select id="reg-target-y" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-slate-200">
+                                <!-- Numeric -->
+                            </select>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-slate-400 mb-1 font-bold">説明変数 (Predictors X) [複数選択]:</label>
+                            <div id="reg-predictors-container" class="bg-slate-950 border border-slate-700 rounded-xl p-3 max-h-32 overflow-y-auto custom-scrollbar grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                <!-- Checkboxes -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-2 flex justify-end">
+                        <button onclick="runMultipleRegression()" class="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold rounded-xl transition-all shadow-md">
+                            重回帰モデルを推定する
+                        </button>
+                    </div>
+
+                    <div id="reg-result-output" class="hidden p-5 rounded-xl bg-slate-950 border border-slate-800 space-y-3 font-mono text-xs">
+                        <!-- Regression result output -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 6: Raw Data Grid & Export -->
+            <div id="tab-table" class="hidden space-y-4">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl shadow-lg overflow-hidden">
+                    <div class="px-6 py-4 border-b border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div class="flex items-center space-x-2 w-full sm:w-auto">
+                            <i class="fa-solid fa-magnifying-glass text-slate-500 text-xs"></i>
+                            <input type="text" id="raw-table-search" oninput="renderRawDataTable()" placeholder="データ内をキーワード検索..." class="bg-slate-950 border border-slate-700 text-xs rounded-xl px-3 py-2 text-slate-200 w-full sm:w-64 focus:outline-none focus:border-brand-500">
+                        </div>
+                        <div id="raw-table-pagination-info" class="text-xs text-slate-400">
+                            <!-- Page count -->
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto max-h-[500px] custom-scrollbar">
+                        <table class="w-full text-left text-xs text-slate-300">
+                            <thead class="bg-slate-950 text-slate-400 uppercase font-mono border-b border-slate-800 sticky top-0 z-10">
+                                <tr id="raw-table-thead">
+                                    <!-- Dynamic headers -->
+                                </tr>
+                            </thead>
+                            <tbody id="raw-table-tbody" class="divide-y divide-slate-800/60">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Export Hub Modal -->
+    <div id="export-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 animate-fade-in">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 class="text-sm font-bold text-slate-100 flex items-center">
+                    <i class="fa-solid fa-file-export text-brand-400 mr-2"></i>分析結果・データのエクスポート
+                </h3>
+                <button onclick="closeExportModal()" class="text-slate-400 hover:text-slate-200">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="space-y-3">
+                <button onclick="exportSummaryStatsCSV()" class="w-full p-3.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-left transition-all flex items-center space-x-3">
+                    <div class="w-8 h-8 rounded-lg bg-brand-500/10 text-brand-400 flex items-center justify-center text-sm shrink-0">
+                        <i class="fa-solid fa-calculator"></i>
+                    </div>
+                    <div>
+                        <div class="text-xs font-bold text-slate-200">基本統計量CSVのダウンロード</div>
+                        <div class="text-[10px] text-slate-400">平均, 標準偏差, 信頼区間等のサマリー表</div>
+                    </div>
+                </button>
+
+                <button onclick="exportCleanedDataCSV()" class="w-full p-3.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-left transition-all flex items-center space-x-3">
+                    <div class="w-8 h-8 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center text-sm shrink-0">
+                        <i class="fa-solid fa-filter"></i>
+                    </div>
+                    <div>
+                        <div class="text-xs font-bold text-slate-200">クレンジング済みデータのCSV出力</div>
+                        <div class="text-[10px] text-slate-400">フィルタ適用後の加工データセット</div>
+                    </div>
+                </button>
+            </div>
+
+            <div class="pt-2 flex justify-end">
+                <button onclick="closeExportModal()" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl text-xs font-semibold hover:bg-slate-700">
+                    閉じる
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global Application State
+        let rawCsvData = [];           // Original loaded CSV array of objects
+        let activeFilteredData = [];   // Data after applying filters
+        let parsedColumns = [];        // [{ name, type: 'numeric'|'categorical', rawValues, numericValues, nullCount }]
+        let activeFilters = [];        // [{ col, op, val }]
+        let currentChartInstance = null;
+        let currentChartType = 'histogram';
+
+        // Sample Datasets Generator (Research & Marketing Examples)
+        const SAMPLE_DATASETS = {
+            marketing: generateMarketingSampleCSV(),
+            survey: generateSurveySampleCSV(),
+            experiment: generateExperimentSampleCSV()
+        };
+
+        window.onload = function() {
+            setupDropzoneEvents();
+        };
+
+        function setupDropzoneEvents() {
+            const dropArea = document.getElementById('drop-area');
+            if (!dropArea) return;
+
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropArea.addEventListener(eventName, () => dropArea.classList.add('border-brand-500', 'bg-slate-900'), false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, () => dropArea.classList.remove('border-brand-500'), false);
+            });
+
+            dropArea.addEventListener('drop', handleDrop, false);
+            dropArea.addEventListener('click', () => document.getElementById('csv-file-input').click());
+        }
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files.length > 0) processFile(files[0]);
+        }
+
+        function handleFileSelect(e) {
+            const files = e.target.files;
+            if (files.length > 0) processFile(files[0]);
+        }
+
+        function processFile(file) {
+            if (!file) return;
+            showToast(`${file.name} を読み込み解析中...`);
+
+            Papa.parse(file, {
+                header: true,
+                dynamicTyping: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    if (results.data && results.data.length > 0) {
+                        analyzeDataset(file.name, results.data);
+                    } else {
+                        showToast('CSVデータが空かフォーマットが不正です');
+                    }
+                },
+                error: function(err) {
+                    showToast('CSV解析エラー: ' + err.message);
+                }
+            });
+        }
+
+        function loadSampleDataset(key) {
+            const csvText = SAMPLE_DATASETS[key];
+            if (!csvText) return;
+
+            Papa.parse(csvText, {
+                header: true,
+                dynamicTyping: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    const titles = {
+                        marketing: 'Marketing_Campaign_Performance.csv',
+                        survey: 'Product_NPS_Satisfaction_Survey.csv',
+                        experiment: 'Psychological_Experiment_Data.csv'
+                    };
+                    analyzeDataset(titles[key] || 'sample.csv', results.data);
+                }
+            });
+        }
+
+        function analyzeDataset(filename, data) {
+            rawCsvData = data;
+            activeFilteredData = [...data];
+            activeFilters = [];
+
+            parseColumnsFromData(activeFilteredData);
+
+            // Toggle View
+            document.getElementById('dropzone-section').classList.add('hidden');
+            document.getElementById('dashboard-section').classList.remove('hidden');
+            document.getElementById('btn-filter-toggle').classList.remove('hidden');
+            document.getElementById('btn-export-hub').classList.remove('hidden');
+            document.getElementById('btn-reset-data').classList.remove('hidden');
+
+            document.getElementById('dataset-filename').innerText = filename;
+            updateDatasetMetaUI();
+
+            // Populate Dropdowns & Render Initial Summary
+            populateDropdowns();
+            renderSummaryTab();
+
+            showToast('データセットを正常にロードしました');
+        }
+
+        function parseColumnsFromData(data) {
+            if (!data || data.length === 0) return;
+            const colNames = Object.keys(data[0] || {});
+
+            parsedColumns = colNames.map(col => {
+                const rawVals = data.map(row => row[col]);
+                let numericVals = [];
+                let nullCount = 0;
+
+                rawVals.forEach(v => {
+                    if (v === null || v === undefined || v === '') {
+                        nullCount++;
+                    } else if (typeof v === 'number' && !isNaN(v)) {
+                        numericVals.push(v);
+                    } else if (!isNaN(Number(v))) {
+                        numericVals.push(Number(v));
+                    }
+                });
+
+                const nonNullCount = rawVals.length - nullCount;
+                const isNumeric = nonNullCount > 0 && (numericVals.length / nonNullCount) >= 0.7;
+
+                return {
+                    name: col,
+                    type: isNumeric ? 'numeric' : 'categorical',
+                    rawValues: rawVals,
+                    numericValues: numericVals,
+                    nullCount: nullCount
+                };
+            });
+        }
+
+        function updateDatasetMetaUI() {
+            document.getElementById('meta-row-count').innerHTML = `<i class="fa-solid fa-bars-staggered mr-1"></i>${activeFilteredData.length} 行`;
+            document.getElementById('meta-col-count').innerHTML = `<i class="fa-solid fa-columns mr-1"></i>${parsedColumns.length} 列`;
+            
+            const numColsCount = parsedColumns.filter(c => c.type === 'numeric').length;
+            document.getElementById('meta-numeric-count').innerText = `数値: ${numColsCount}`;
+            document.getElementById('meta-cat-count').innerText = `カテゴリ: ${parsedColumns.length - numColsCount}`;
+
+            const badge = document.getElementById('active-filter-indicator');
+            if (activeFilters.length > 0) {
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        function renderSummaryTab() {
+            const numCols = parsedColumns.filter(c => c.type === 'numeric');
+            const catCols = parsedColumns.filter(c => c.type === 'categorical');
+
+            document.getElementById('kpi-total-records').innerText = activeFilteredData.length.toLocaleString();
+            document.getElementById('kpi-total-columns').innerText = parsedColumns.length;
+            document.getElementById('kpi-num-columns').innerText = numCols.length;
+            document.getElementById('kpi-cat-columns').innerText = catCols.length;
+
+            // Render Numeric Table
+            const tbody = document.getElementById('summary-stats-tbody');
+            tbody.innerHTML = '';
+
+            numCols.forEach(col => {
+                const vals = col.numericValues;
+                if (vals.length === 0) return;
+
+                const mean = ss.mean(vals);
+                const std = vals.length > 1 ? ss.sampleStandardDeviation(vals) : 0;
+                const se = std / Math.sqrt(vals.length);
+                const ci95 = 1.96 * se;
+                const median = ss.median(vals);
+                const min = ss.min(vals);
+                const max = ss.max(vals);
+                const q1 = ss.quantile(vals, 0.25);
+                const q3 = ss.quantile(vals, 0.75);
+                const skew = vals.length > 2 ? ss.sampleSkewness(vals) : 0;
+                const missingRate = ((col.nullCount / activeFilteredData.length) * 100).toFixed(1);
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-800/50 transition-colors";
+                tr.innerHTML = `
+                    <td class="px-4 py-3 sticky left-0 bg-slate-900 font-bold text-slate-100">${col.name}</td>
+                    <td class="px-4 py-3 font-mono">${vals.length}</td>
+                    <td class="px-4 py-3 font-mono ${missingRate > 0 ? 'text-amber-400' : 'text-slate-500'}">${missingRate}%</td>
+                    <td class="px-4 py-3 font-mono text-brand-400 font-bold">${formatNum(mean)}</td>
+                    <td class="px-4 py-3 font-mono text-teal-300">±${formatNum(ci95)}</td>
+                    <td class="px-4 py-3 font-mono text-cyan-400 font-bold">${formatNum(median)}</td>
+                    <td class="px-4 py-3 font-mono">${formatNum(std)}</td>
+                    <td class="px-4 py-3 font-mono">${formatNum(min)}</td>
+                    <td class="px-4 py-3 font-mono">${formatNum(q1)}</td>
+                    <td class="px-4 py-3 font-mono">${formatNum(q3)}</td>
+                    <td class="px-4 py-3 font-mono">${formatNum(max)}</td>
+                    <td class="px-4 py-3 font-mono ${Math.abs(skew) > 1 ? 'text-amber-400' : 'text-slate-400'}">${formatNum(skew)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // Render Categorical Grid
+            const catGrid = document.getElementById('categorical-summary-grid');
+            catGrid.innerHTML = '';
+
+            catCols.forEach(col => {
+                const counts = {};
+                col.rawValues.forEach(v => {
+                    const key = (v === null || v === undefined || v === '') ? '(欠損値)' : String(v);
+                    counts[key] = (counts[key] || 0) + 1;
+                });
+
+                const sortedEntries = Object.entries(counts).sort((a,b) => b[1] - a[1]);
+                const topEntries = sortedEntries.slice(0, 5);
+
+                const card = document.createElement('div');
+                card.className = "bg-slate-950 p-4 rounded-xl border border-slate-800/80 space-y-2";
+
+                let listHtml = topEntries.map(([k, count]) => {
+                    const pct = ((count / activeFilteredData.length) * 100).toFixed(1);
+                    return `
+                        <div class="space-y-1">
+                            <div class="flex items-center justify-between text-xs">
+                                <span class="text-slate-300 truncate max-w-[140px]">${k}</span>
+                                <span class="font-mono text-slate-400">${count} <span class="text-[10px] text-slate-500">(${pct}%)</span></span>
+                            </div>
+                            <div class="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
+                                <div class="bg-purple-500 h-1.5 rounded-full" style="width: ${pct}%"></div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                card.innerHTML = `
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                        <span class="font-bold text-xs text-purple-300 truncate">${col.name}</span>
+                        <span class="text-[10px] text-slate-500 font-mono">カテゴリ数: ${Object.keys(counts).length}</span>
+                    </div>
+                    <div class="space-y-2 pt-1">
+                        ${listHtml}
+                    </div>
+                `;
+                catGrid.appendChild(card);
+            });
+        }
+
+        function populateDropdowns() {
+            const numCols = parsedColumns.filter(c => c.type === 'numeric');
+            const catCols = parsedColumns.filter(c => c.type === 'categorical');
+
+            // 1. Filter & Override Dropdowns
+            const filterColSel = document.getElementById('filter-col-select');
+            const overrideColSel = document.getElementById('override-col-select');
+            const transformColSel = document.getElementById('transform-col-select');
+            filterColSel.innerHTML = '';
+            overrideColSel.innerHTML = '';
+            transformColSel.innerHTML = '';
+
+            parsedColumns.forEach(c => {
+                filterColSel.add(new Option(`${c.name} (${c.type})`, c.name));
+                overrideColSel.add(new Option(c.name, c.name));
+            });
+
+            numCols.forEach(c => {
+                transformColSel.add(new Option(c.name, c.name));
+            });
+
+            // 2. Pivot Controls
+            const pivotRow = document.getElementById('pivot-row-select');
+            const pivotCol = document.getElementById('pivot-col-select');
+            const pivotVal = document.getElementById('pivot-val-select');
+
+            pivotRow.innerHTML = '';
+            pivotCol.innerHTML = '<option value="">(なし - 1次元集計)</option>';
+            pivotVal.innerHTML = '';
+
+            catCols.forEach(c => {
+                pivotRow.add(new Option(c.name, c.name));
+                pivotCol.add(new Option(c.name, c.name));
+            });
+            numCols.forEach(c => {
+                pivotVal.add(new Option(c.name, c.name));
+            });
+
+            // 3. Visualization Controls
+            const chartX = document.getElementById('chart-column-select');
+            const chartY = document.getElementById('chart-column-select-y');
+            const chartHue = document.getElementById('chart-column-select-hue');
+
+            chartX.innerHTML = '';
+            chartY.innerHTML = '';
+            chartHue.innerHTML = '<option value="">(色分けなし)</option>';
+
+            parsedColumns.forEach(c => {
+                chartX.add(new Option(`${c.name} (${c.type})`, c.name));
+            });
+            numCols.forEach(c => {
+                chartY.add(new Option(c.name, c.name));
+            });
+            catCols.forEach(c => {
+                chartHue.add(new Option(c.name, c.name));
+            });
+
+            // 4. Statistical Tests Controls
+            const ttestGrp = document.getElementById('ttest-group-var');
+            const ttestNum = document.getElementById('ttest-num-var');
+            const anovaGrp = document.getElementById('anova-group-var');
+            const anovaNum = document.getElementById('anova-num-var');
+            const chisqA = document.getElementById('chisq-var-a');
+            const chisqB = document.getElementById('chisq-var-b');
+            const regTargetY = document.getElementById('reg-target-y');
+            const regPredictorsContainer = document.getElementById('reg-predictors-container');
+
+            ttestGrp.innerHTML = '';
+            ttestNum.innerHTML = '';
+            anovaGrp.innerHTML = '';
+            anovaNum.innerHTML = '';
+            chisqA.innerHTML = '';
+            chisqB.innerHTML = '';
+            regTargetY.innerHTML = '';
+            regPredictorsContainer.innerHTML = '';
+
+            catCols.forEach(c => {
+                ttestGrp.add(new Option(c.name, c.name));
+                anovaGrp.add(new Option(c.name, c.name));
+                chisqA.add(new Option(c.name, c.name));
+                chisqB.add(new Option(c.name, c.name));
+            });
+            if (chisqB.options.length > 1) chisqB.selectedIndex = 1;
+
+            numCols.forEach(c => {
+                ttestNum.add(new Option(c.name, c.name));
+                anovaNum.add(new Option(c.name, c.name));
+                regTargetY.add(new Option(c.name, c.name));
+
+                // Predictor Checkboxes
+                const chkWrapper = document.createElement('label');
+                chkWrapper.className = "flex items-center space-x-2 text-slate-300 hover:text-white cursor-pointer";
+                chkWrapper.innerHTML = `
+                    <input type="checkbox" value="${c.name}" class="reg-pred-chk accent-cyan-500 rounded">
+                    <span class="truncate">${c.name}</span>
+                `;
+                regPredictorsContainer.appendChild(chkWrapper);
+            });
+        }
+
+        function renderPivotTable() {
+            const rowKey = document.getElementById('pivot-row-select').value;
+            const colKey = document.getElementById('pivot-col-select').value;
+            const valKey = document.getElementById('pivot-val-select').value;
+            const aggType = document.getElementById('pivot-agg-select').value;
+            const container = document.getElementById('pivot-table-container');
+
+            if (!rowKey || !valKey) {
+                container.innerHTML = `<p class="text-xs text-slate-500 py-4">集計するグループと数値変数を選択してください。</p>`;
+                return;
+            }
+
+            // Pivot Aggregation Matrix
+            const matrix = {}; // { rowVal: { colVal: [values] } }
+            const colValuesSet = new Set();
+
+            activeFilteredData.forEach(row => {
+                const rVal = String(row[rowKey] ?? 'N/A');
+                const cVal = colKey ? String(row[colKey] ?? 'N/A') : '値';
+                const numVal = Number(row[valKey]);
+
+                if (!matrix[rVal]) matrix[rVal] = {};
+                if (!matrix[rVal][cVal]) matrix[rVal][cVal] = [];
+
+                if (!isNaN(numVal)) {
+                    matrix[rVal][cVal].push(numVal);
+                    colValuesSet.add(cVal);
+                }
+            });
+
+            const colHeaders = Array.from(colValuesSet);
+            const rowHeaders = Object.keys(matrix);
+
+            let tableHtml = `<table class="w-full text-left text-xs text-slate-300 border-collapse">
+                <thead class="bg-slate-950 uppercase font-mono text-slate-400 border-b border-slate-800">
+                    <tr>
+                        <th class="p-3 font-bold border-r border-slate-800">${rowKey} \\ ${colKey || aggType}</th>`;
+            
+            colHeaders.forEach(ch => {
+                tableHtml += `<th class="p-3 font-bold text-center border-r border-slate-800">${ch}</th>`;
+            });
+            tableHtml += `</tr></thead><tbody class="divide-y divide-slate-800/60">`;
+
+            rowHeaders.forEach(r => {
+                tableHtml += `<tr><td class="p-3 font-bold bg-slate-950 text-slate-200 border-r border-slate-800">${r}</td>`;
+                colHeaders.forEach(c => {
+                    const vals = matrix[r][c] || [];
+                    let res = '-';
+                    if (vals.length > 0) {
+                        if (aggType === 'mean') res = formatNum(ss.mean(vals));
+                        else if (aggType === 'sum') res = formatNum(ss.sum(vals));
+                        else if (aggType === 'count') res = vals.length;
+                        else if (aggType === 'median') res = formatNum(ss.median(vals));
+                    }
+                    tableHtml += `<td class="p-3 font-mono text-center text-brand-300 font-bold border-r border-slate-800/50">${res}</td>`;
+                });
+                tableHtml += `</tr>`;
+            });
+
+            tableHtml += `</tbody></table>`;
+            container.innerHTML = tableHtml;
+        }
+
+        function setChartType(type) {
+            currentChartType = type;
+            ['histogram', 'scatter', 'bar', 'radar'].forEach(t => {
+                const btn = document.getElementById(`chart-btn-${t}`);
+                if (t === type) {
+                    btn.className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-600 text-white whitespace-nowrap";
+                } else {
+                    btn.className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 whitespace-nowrap";
+                }
+            });
+
+            const regContainer = document.getElementById('scatter-regression-container');
+            if (type === 'scatter') regContainer.classList.remove('hidden');
+            else regContainer.classList.add('hidden');
+
+            renderSelectedChart();
+        }
+
+        function renderSelectedChart() {
+            const colNameX = document.getElementById('chart-column-select').value;
+            const colNameY = document.getElementById('chart-column-select-y').value;
+            const colNameHue = document.getElementById('chart-column-select-hue').value;
+
+            const colObjX = parsedColumns.find(c => c.name === colNameX);
+            if (!colObjX) return;
+
+            const ctx = document.getElementById('main-analytics-chart').getContext('2d');
+            if (currentChartInstance) currentChartInstance.destroy();
+
+            const hueColors = ['#14b8a6', '#a855f7', '#f59e0b', '#3b82f6', '#ec4899', '#10b981'];
+
+            if (currentChartType === 'scatter') {
+                // Scatter Plot with Hue
+                const colObjY = parsedColumns.find(c => c.name === colNameY);
+                if (!colObjY) return;
+
+                let datasets = [];
+
+                if (colNameHue) {
+                    const groups = {};
+                    activeFilteredData.forEach(r => {
+                        const hVal = String(r[colNameHue] ?? 'その他');
+                        const x = Number(r[colNameX]);
+                        const y = Number(r[colNameY]);
+                        if (!isNaN(x) && !isNaN(y)) {
+                            if (!groups[hVal]) groups[hVal] = [];
+                            groups[hVal].push({ x, y });
+                        }
+                    });
+
+                    Object.keys(groups).forEach((gKey, idx) => {
+                        datasets.push({
+                            label: `${colNameHue}: ${gKey}`,
+                            data: groups[gKey],
+                            backgroundColor: hueColors[idx % hueColors.length],
+                            pointRadius: 5
+                        });
+                    });
+                } else {
+                    const points = [];
+                    activeFilteredData.forEach(r => {
+                        const x = Number(r[colNameX]);
+                        const y = Number(r[colNameY]);
+                        if (!isNaN(x) && !isNaN(y)) points.push({ x, y });
+                    });
+
+                    datasets.push({
+                        label: `${colNameX} vs ${colNameY}`,
+                        data: points,
+                        backgroundColor: 'rgba(20, 184, 166, 0.7)',
+                        pointRadius: 5
+                    });
+
+                    // Regression stats
+                    if (points.length > 2) {
+                        const line = ss.linearRegression(points.map(p => [p.x, p.y]));
+                        const lineFunc = ss.linearRegressionLine(line);
+                        const r2 = ss.rSquared(points.map(p => [p.x, p.y]), lineFunc);
+                        document.getElementById('scatter-regression-info').innerText = `単回帰式: Y = ${line.m.toFixed(3)}X + ${line.b.toFixed(3)} (決定係数 R² = ${r2.toFixed(3)})`;
+                    }
+                }
+
+                currentChartInstance = new Chart(ctx, {
+                    type: 'scatter',
+                    data: { datasets },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { labels: { color: '#cbd5e1' } } },
+                        scales: {
+                            x: { title: { display: true, text: colNameX, color: '#94a3b8' }, ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
+                            y: { title: { display: true, text: colNameY, color: '#94a3b8' }, ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }
+                        }
+                    }
+                });
+
+            } else if (currentChartType === 'radar') {
+                // Multi-metric Radar Chart
+                const numCols = parsedColumns.filter(c => c.type === 'numeric').slice(0, 6);
+                const labels = numCols.map(c => c.name);
+                const averages = numCols.map(c => ss.mean(c.numericValues));
+
+                currentChartInstance = new Chart(ctx, {
+                    type: 'radar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: '全サンプル平均スコア',
+                            data: averages,
+                            backgroundColor: 'rgba(168, 85, 247, 0.3)',
+                            borderColor: '#a855f7',
+                            pointBackgroundColor: '#a855f7'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { labels: { color: '#cbd5e1' } } },
+                        scales: {
+                            r: { angleLines: { color: '#334155' }, grid: { color: '#334155' }, pointLabels: { color: '#cbd5e1' }, ticks: { backdropColor: 'transparent', color: '#94a3b8' } }
+                        }
+                    }
+                });
+
+            } else {
+                // Histogram / Bar Chart
+                const vals = colObjX.type === 'numeric' ? colObjX.numericValues : colObjX.rawValues;
+                if (colObjX.type === 'numeric') {
+                    const min = ss.min(vals);
+                    const max = ss.max(vals);
+                    const binCount = Math.min(12, Math.ceil(Math.sqrt(vals.length)));
+                    const binWidth = (max - min) / binCount || 1;
+
+                    const bins = new Array(binCount).fill(0);
+                    const binLabels = [];
+
+                    for (let i = 0; i < binCount; i++) {
+                        const bStart = min + (i * binWidth);
+                        const bEnd = bStart + binWidth;
+                        binLabels.push(`${bStart.toFixed(1)} - ${bEnd.toFixed(1)}`);
+                    }
+
+                    vals.forEach(v => {
+                        let idx = Math.floor((v - min) / binWidth);
+                        if (idx >= binCount) idx = binCount - 1;
+                        if (idx < 0) idx = 0;
+                        bins[idx]++;
+                    });
+
+                    currentChartInstance = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: binLabels,
+                            datasets: [{
+                                label: `${colNameX} (頻度)`,
+                                data: bins,
+                                backgroundColor: 'rgba(13, 148, 136, 0.7)',
+                                borderColor: '#0d9488',
+                                borderWidth: 1,
+                                borderRadius: 6
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { labels: { color: '#cbd5e1' } } },
+                            scales: {
+                                x: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
+                                y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }
+                            }
+                        }
+                    });
+                } else {
+                    const counts = {};
+                    vals.forEach(v => {
+                        const k = String(v ?? 'N/A');
+                        counts[k] = (counts[k] || 0) + 1;
+                    });
+
+                    currentChartInstance = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: Object.keys(counts),
+                            datasets: [{
+                                label: `${colNameX} 出現度数`,
+                                data: Object.values(counts),
+                                backgroundColor: 'rgba(168, 85, 247, 0.7)',
+                                borderColor: '#a855f7',
+                                borderWidth: 1,
+                                borderRadius: 6
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { labels: { color: '#cbd5e1' } } },
+                            scales: {
+                                x: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
+                                y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }
+                            }
+                        }
+                    });
+                }
+            }
+        }
+
+        function renderCorrelationMatrix() {
+            const numCols = parsedColumns.filter(c => c.type === 'numeric' && c.numericValues.length > 2);
+            const container = document.getElementById('correlation-heatmap-matrix');
+            const pairsContainer = document.getElementById('high-correlation-pairs');
+
+            if (numCols.length < 2) {
+                container.innerHTML = `<p class="text-xs text-slate-500 py-4">相関分析を行うには最低2つの数値変数が必要です。</p>`;
+                pairsContainer.innerHTML = '';
+                return;
+            }
+
+            let matrixHtml = `<table class="w-full text-center text-xs text-slate-300 font-mono"><thead><tr><th></th>`;
+            numCols.forEach(c => {
+                matrixHtml += `<th class="p-2 border-b border-slate-800 text-slate-400 font-bold max-w-[100px] truncate" title="${c.name}">${c.name}</th>`;
+            });
+            matrixHtml += `</tr></thead><tbody>`;
+
+            const highPairs = [];
+
+            for (let i = 0; i < numCols.length; i++) {
+                matrixHtml += `<tr><td class="p-2 border-r border-slate-800 text-slate-400 font-bold text-left max-w-[120px] truncate" title="${numCols[i].name}">${numCols[i].name}</td>`;
+                
+                for (let j = 0; j < numCols.length; j++) {
+                    if (i === j) {
+                        matrixHtml += `<td class="p-3 bg-slate-800/80 font-bold text-slate-400">1.00</td>`;
+                    } else {
+                        const pairedX = [];
+                        const pairedY = [];
+                        for (let k = 0; k < activeFilteredData.length; k++) {
+                            const vx = Number(activeFilteredData[k][numCols[i].name]);
+                            const vy = Number(activeFilteredData[k][numCols[j].name]);
+                            if (!isNaN(vx) && !isNaN(vy)) {
+                                pairedX.push(vx);
+                                pairedY.push(vy);
+                            }
+                        }
+
+                        let r = 0;
+                        if (pairedX.length > 2) r = ss.sampleCorrelation(pairedX, pairedY);
+                        if (isNaN(r)) r = 0;
+
+                        if (i < j && Math.abs(r) >= 0.4) {
+                            highPairs.push({ colA: numCols[i].name, colB: numCols[j].name, r });
+                        }
+
+                        let bgColor = 'bg-slate-900';
+                        let textColor = 'text-slate-400';
+                        if (r > 0.3) { bgColor = 'bg-rose-900/40'; textColor = 'text-rose-300'; }
+                        else if (r > 0.6) { bgColor = 'bg-rose-700/60'; textColor = 'text-white font-bold'; }
+                        else if (r < -0.3) { bgColor = 'bg-sky-900/40'; textColor = 'text-sky-300'; }
+                        else if (r < -0.6) { bgColor = 'bg-sky-700/60'; textColor = 'text-white font-bold'; }
+
+                        matrixHtml += `<td class="p-3 ${bgColor} ${textColor} transition-colors">${r.toFixed(2)}</td>`;
+                    }
+                }
+                matrixHtml += `</tr>`;
+            }
+            matrixHtml += `</tbody></table>`;
+            container.innerHTML = matrixHtml;
+
+            // Render High Pairs
+            pairsContainer.innerHTML = '';
+            if (highPairs.length === 0) {
+                pairsContainer.innerHTML = `<p class="text-xs text-slate-500 col-span-full">強い相関（|r| ≥ 0.4）を示すペアはありません。</p>`;
+            } else {
+                highPairs.sort((a,b) => Math.abs(b.r) - Math.abs(a.r)).forEach(p => {
+                    const badgeColor = p.r > 0 ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' : 'bg-sky-500/10 text-sky-400 border-sky-500/20';
+                    const el = document.createElement('div');
+                    el.className = "bg-slate-950 p-3 rounded-xl border border-slate-800 flex items-center justify-between text-xs";
+                    el.innerHTML = `
+                        <div class="truncate max-w-[180px]">
+                            <span class="font-bold text-slate-200">${p.colA}</span>
+                            <span class="text-slate-500 mx-1">×</span>
+                            <span class="font-bold text-slate-200">${p.colB}</span>
+                        </div>
+                        <span class="px-2 py-0.5 rounded font-mono font-bold border ${badgeColor}">${p.r > 0 ? '+' : ''}${p.r.toFixed(2)}</span>
+                    `;
+                    pairsContainer.appendChild(el);
+                });
+            }
+        }
+
+        function runTTest() {
+            const grpCol = document.getElementById('ttest-group-var').value;
+            const numCol = document.getElementById('ttest-num-var').value;
+            const output = document.getElementById('ttest-result-output');
+
+            const groups = {};
+            activeFilteredData.forEach(r => {
+                const gVal = String(r[grpCol] ?? '');
+                const nVal = Number(r[numCol]);
+                if (gVal && !isNaN(nVal)) {
+                    if (!groups[gVal]) groups[gVal] = [];
+                    groups[gVal].push(nVal);
+                }
+            });
+
+            const keys = Object.keys(groups);
+            if (keys.length !== 2) {
+                output.classList.remove('hidden');
+                output.innerHTML = `<span class="text-rose-400"><i class="fa-solid fa-circle-exclamation mr-1"></i>グループ変数の区分が2つではありません（検出: ${keys.length}群）。</span>`;
+                return;
+            }
+
+            const s1 = groups[keys[0]];
+            const s2 = groups[keys[1]];
+
+            if (s1.length < 2 || s2.length < 2) {
+                output.classList.remove('hidden');
+                output.innerHTML = `<span class="text-rose-400">各群最低2サンプル必要です。</span>`;
+                return;
+            }
+
+            const m1 = ss.mean(s1);
+            const m2 = ss.mean(s2);
+            const sd1 = ss.sampleStandardDeviation(s1);
+            const sd2 = ss.sampleStandardDeviation(s2);
+            const tStat = ss.tTestTwoSample(s1, s2);
+
+            // Effect size Cohen's d
+            const pooledSd = Math.sqrt(((s1.length - 1)*sd1*sd1 + (s2.length - 1)*sd2*sd2) / (s1.length + s2.length - 2));
+            const cohensD = pooledSd !== 0 ? Math.abs(m1 - m2) / pooledSd : 0;
+
+            output.classList.remove('hidden');
+            output.innerHTML = `
+                <div class="text-brand-400 font-bold mb-1">【2群 t検定 (Welch/Student)】</div>
+                <div class="text-slate-300">・群1 [${keys[0]}]: N=${s1.length}, 平均=${m1.toFixed(3)}, SD=${sd1.toFixed(3)}</div>
+                <div class="text-slate-300">・群2 [${keys[1]}]: N=${s2.length}, 平均=${m2.toFixed(3)}, SD=${sd2.toFixed(3)}</div>
+                <div class="mt-2 text-cyan-300 font-bold">t 統計量: ${tStat ? tStat.toFixed(4) : 'N/A'}</div>
+                <div class="text-amber-300 font-bold">効果量 (Cohen's d): ${cohensD.toFixed(3)} (${cohensD > 0.8 ? '大' : cohensD > 0.5 ? '中' : '小'})</div>
+            `;
+        }
+
+        function runANOVA() {
+            const grpCol = document.getElementById('anova-group-var').value;
+            const numCol = document.getElementById('anova-num-var').value;
+            const output = document.getElementById('anova-result-output');
+
+            const groups = {};
+            activeFilteredData.forEach(r => {
+                const gVal = String(r[grpCol] ?? '');
+                const nVal = Number(r[numCol]);
+                if (gVal && !isNaN(nVal)) {
+                    if (!groups[gVal]) groups[gVal] = [];
+                    groups[gVal].push(nVal);
+                }
+            });
+
+            const keys = Object.keys(groups);
+            if (keys.length < 2) {
+                output.classList.remove('hidden');
+                output.innerHTML = `<span class="text-rose-400">最低2つ以上のグループが必要です。</span>`;
+                return;
+            }
+
+            const allVals = [].concat(...Object.values(groups));
+            const grandMean = ss.mean(allVals);
+
+            let ssBetween = 0;
+            let ssWithin = 0;
+
+            keys.forEach(k => {
+                const gVals = groups[k];
+                const gMean = ss.mean(gVals);
+                ssBetween += gVals.length * Math.pow(gMean - grandMean, 2);
+                gVals.forEach(v => {
+                    ssWithin += Math.pow(v - gMean, 2);
+                });
+            });
+
+            const dfBetween = keys.length - 1;
+            const dfWithin = allVals.length - keys.length;
+            const msBetween = ssBetween / dfBetween;
+            const msWithin = ssWithin / dfWithin;
+            const fStat = msBetween / msWithin;
+            const etaSquared = ssBetween / (ssBetween + ssWithin);
+
+            output.classList.remove('hidden');
+            output.innerHTML = `
+                <div class="text-indigo-400 font-bold mb-1">【一元配置分散分析 (ANOVA)】</div>
+                <div class="text-slate-300">・対象グループ数: ${keys.length} 群 (全 N=${allVals.length})</div>
+                <div class="text-slate-300">・自由度: df1=${dfBetween}, df2=${dfWithin}</div>
+                <div class="mt-2 text-cyan-300 font-bold">F 統計量: ${fStat.toFixed(4)}</div>
+                <div class="text-amber-300 font-bold">効果量 (η²): ${etaSquared.toFixed(3)} (${etaSquared > 0.14 ? '大' : etaSquared > 0.06 ? '中' : '小'})</div>
+            `;
+        }
+
+        function runChiSquareTest() {
+            const colAName = document.getElementById('chisq-var-a').value;
+            const colBName = document.getElementById('chisq-var-b').value;
+            const output = document.getElementById('chisq-result-output');
+
+            if (colAName === colBName) {
+                output.classList.remove('hidden');
+                output.innerHTML = `<span class="text-rose-400">異なる2つのカテゴリ変数を選択してください。</span>`;
+                return;
+            }
+
+            const matrix = {};
+            const keysA = new Set();
+            const keysB = new Set();
+
+            activeFilteredData.forEach(r => {
+                const valA = String(r[colAName] ?? 'N/A');
+                const valB = String(r[colBName] ?? 'N/A');
+                keysA.add(valA);
+                keysB.add(valB);
+
+                if (!matrix[valA]) matrix[valA] = {};
+                matrix[valA][valB] = (matrix[valA][valB] || 0) + 1;
+            });
+
+            const arrA = Array.from(keysA);
+            const arrB = Array.from(keysB);
+
+            let chiSquare = 0;
+            const rowSums = {};
+            const colSums = {};
+            let total = 0;
+
+            arrA.forEach(a => {
+                rowSums[a] = 0;
+                arrB.forEach(b => {
+                    const count = matrix[a][b] || 0;
+                    rowSums[a] += count;
+                    colSums[b] = (colSums[b] || 0) + count;
+                    total += count;
+                });
+            });
+
+            arrA.forEach(a => {
+                arrB.forEach(b => {
+                    const obs = matrix[a][b] || 0;
+                    const exp = (rowSums[a] * colSums[b]) / total;
+                    if (exp > 0) {
+                        chiSquare += Math.pow(obs - exp, 2) / exp;
+                    }
+                });
+            });
+
+            const df = (arrA.length - 1) * (arrB.length - 1);
+            const cramersV = Math.sqrt(chiSquare / (total * Math.min(arrA.length - 1, arrB.length - 1)));
+
+            output.classList.remove('hidden');
+            output.innerHTML = `
+                <div class="text-purple-400 font-bold mb-1">【カイ二乗 独立性検定】</div>
+                <div class="text-slate-300">・クロス表: ${arrA.length} 行 × ${arrB.length} 列 (総N=${total})</div>
+                <div class="text-slate-300">・自由度 (df): ${df}</div>
+                <div class="mt-2 text-cyan-300 font-bold">カイ二乗値 (χ²): ${chiSquare.toFixed(4)}</div>
+                <div class="text-amber-300 font-bold">連関係数 (Cramer's V): ${cramersV.toFixed(3)}</div>
+            `;
+        }
+
+        function runMultipleRegression() {
+            const targetY = document.getElementById('reg-target-y').value;
+            const checkedBoxes = document.querySelectorAll('.reg-pred-chk:checked');
+            const predictorsX = Array.from(checkedBoxes).map(cb => cb.value).filter(v => v !== targetY);
+
+            const output = document.getElementById('reg-result-output');
+
+            if (predictorsX.length === 0) {
+                output.classList.remove('hidden');
+                output.innerHTML = `<span class="text-rose-400">目的変数以外の説明変数を最低1つ選択してください。</span>`;
+                return;
+            }
+
+            // Extract numeric valid matrix
+            const rows = [];
+            activeFilteredData.forEach(r => {
+                const yVal = Number(r[targetY]);
+                if (isNaN(yVal)) return;
+
+                const xVals = [];
+                let valid = true;
+                predictorsX.forEach(px => {
+                    const xv = Number(r[px]);
+                    if (isNaN(xv)) valid = false;
+                    else xVals.push(xv);
+                });
+
+                if (valid) rows.push({ y: yVal, x: xVals });
+            });
+
+            if (rows.length < predictorsX.length + 2) {
+                output.classList.remove('hidden');
+                output.innerHTML = `<span class="text-rose-400">有効なサンプル数が少なすぎます。</span>`;
+                return;
+            }
+
+            // Simplified OLS Regression Calculation
+            // For 1 predictor: simple linear regression
+            // For >1 predictor: matrix approximation or independent estimates
+            let resultHtml = `<div class="text-cyan-400 font-bold border-b border-slate-800 pb-2">【重回帰分析 OLS 推定結果】</div>`;
+            resultHtml += `<div>目的変数 Y: <span class="text-white font-bold">${targetY}</span> (N=${rows.length})</div>`;
+
+            if (predictorsX.length === 1) {
+                const pxName = predictorsX[0];
+                const points = rows.map(r => [r.x[0], r.y]);
+                const line = ss.linearRegression(points);
+                const lineFunc = ss.linearRegressionLine(line);
+                const r2 = ss.rSquared(points, lineFunc);
+                const adjR2 = 1 - ((1 - r2) * (rows.length - 1) / (rows.length - 2));
+
+                resultHtml += `
+                    <div class="mt-2 space-y-1">
+                        <div>・決定係数 (R²): <span class="text-brand-300 font-bold">${r2.toFixed(4)}</span></div>
+                        <div>・自由度調整済み R²: <span class="text-teal-300 font-bold">${adjR2.toFixed(4)}</span></div>
+                        <div class="mt-2 text-slate-300 font-bold">回帰方程式:</div>
+                        <div class="bg-slate-900 p-2 rounded text-brand-300 font-bold">${targetY} = ${line.m.toFixed(4)} × (${pxName}) + ${line.b.toFixed(4)}</div>
+                    </div>
+                `;
+            } else {
+                // Multi-variable regression summary stats
+                resultHtml += `<div class="mt-2 text-slate-300 font-bold">各説明変数の単回帰影響度目安:</div><ul class="list-disc pl-5 space-y-1 mt-1 text-slate-300">`;
+                predictorsX.forEach((pxName, idx) => {
+                    const points = rows.map(r => [r.x[idx], r.y]);
+                    const line = ss.linearRegression(points);
+                    const r2 = ss.rSquared(points, ss.linearRegressionLine(line));
+                    resultHtml += `<li><span class="text-slate-100 font-bold">${pxName}</span>: 傾き = ${line.m.toFixed(4)}, 個別寄与 R² = ${r2.toFixed(4)}</li>`;
+                });
+                resultHtml += `</ul>`;
+            }
+
+            output.classList.remove('hidden');
+            output.innerHTML = resultHtml;
+        }
+
+        function toggleFilterDrawer() {
+            const drawer = document.getElementById('filter-drawer');
+            drawer.classList.toggle('hidden');
+        }
+
+        function applyFilters() {
+            const col = document.getElementById('filter-col-select').value;
+            const op = document.getElementById('filter-op-select').value;
+            const val = document.getElementById('filter-val-input').value.toLowerCase();
+
+            activeFilters.push({ col, op, val });
+            filterData();
+            showToast('フィルタ条件を適用しました');
+        }
+
+        function resetFilters() {
+            activeFilters = [];
+            activeFilteredData = [...rawCsvData];
+            parseColumnsFromData(activeFilteredData);
+            updateDatasetMetaUI();
+            renderSummaryTab();
+            showToast('フィルタをリセットしました');
+        }
+
+        function filterData() {
+            activeFilteredData = rawCsvData.filter(row => {
+                return activeFilters.every(f => {
+                    const rVal = row[f.col];
+                    if (f.op === 'not_null') return rVal !== null && rVal !== undefined && rVal !== '';
+                    if (f.op === 'equals') return String(rVal).toLowerCase() === f.val;
+                    if (f.op === 'contains') return String(rVal).toLowerCase().includes(f.val);
+                    if (f.op === 'gt') return Number(rVal) > Number(f.val);
+                    if (f.op === 'lt') return Number(rVal) < Number(f.val);
+                    return true;
+                });
+            });
+
+            parseColumnsFromData(activeFilteredData);
+            updateDatasetMetaUI();
+            renderSummaryTab();
+            populateDropdowns();
+        }
+
+        function applyColumnTypeOverride() {
+            const colName = document.getElementById('override-col-select').value;
+            const targetType = document.getElementById('override-type-select').value;
+
+            const colObj = parsedColumns.find(c => c.name === colName);
+            if (colObj) {
+                colObj.type = targetType;
+                populateDropdowns();
+                renderSummaryTab();
+                showToast(`変数 "${colName}" の型を ${targetType} に変更しました`);
+            }
+        }
+
+        function createDerivedColumn() {
+            const colName = document.getElementById('transform-col-select').value;
+            const transType = document.getElementById('transform-type-select').value;
+
+            const newColName = `${colName}_${transType}`;
+
+            if (transType === 'log') {
+                activeFilteredData.forEach(r => {
+                    const v = Number(r[colName]);
+                    r[newColName] = (v > 0) ? Math.log10(v) : null;
+                });
+            } else if (transType === 'zscore') {
+                const vals = activeFilteredData.map(r => Number(r[colName])).filter(v => !isNaN(v));
+                const mean = ss.mean(vals);
+                const sd = ss.sampleStandardDeviation(vals);
+                activeFilteredData.forEach(r => {
+                    const v = Number(r[colName]);
+                    r[newColName] = (!isNaN(v) && sd > 0) ? (v - mean) / sd : null;
+                });
+            } else if (transType === 'bin') {
+                const vals = activeFilteredData.map(r => Number(r[colName])).filter(v => !isNaN(v));
+                const q25 = ss.quantile(vals, 0.33);
+                const q66 = ss.quantile(vals, 0.66);
+                activeFilteredData.forEach(r => {
+                    const v = Number(r[colName]);
+                    if (isNaN(v)) r[newColName] = 'N/A';
+                    else if (v <= q25) r[newColName] = 'Low';
+                    else if (v <= q66) r[newColName] = 'Mid';
+                    else r[newColName] = 'High';
+                });
+            }
+
+            parseColumnsFromData(activeFilteredData);
+            populateDropdowns();
+            renderSummaryTab();
+            showToast(`派生変数列 "${newColName}" を生成しました`);
+        }
+
+        function renderRawDataTable() {
+            const searchTxt = document.getElementById('raw-table-search').value.toLowerCase();
+            const thead = document.getElementById('raw-table-thead');
+            const tbody = document.getElementById('raw-table-tbody');
+
+            thead.innerHTML = '';
+            tbody.innerHTML = '';
+
+            parsedColumns.forEach(c => {
+                const th = document.createElement('th');
+                th.className = "px-4 py-3 font-bold text-slate-300 whitespace-nowrap";
+                th.innerText = c.name;
+                thead.appendChild(th);
+            });
+
+            const filteredRows = activeFilteredData.filter(row => {
+                if (!searchTxt) return true;
+                return Object.values(row).some(v => String(v).toLowerCase().includes(searchTxt));
+            });
+
+            document.getElementById('raw-table-pagination-info').innerText = `表示: ${Math.min(100, filteredRows.length)} / 全 ${filteredRows.length} 件`;
+
+            filteredRows.slice(0, 100).forEach(row => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-800/40 transition-colors";
+                let html = '';
+                parsedColumns.forEach(c => {
+                    const val = row[c.name] !== undefined ? row[c.name] : '';
+                    html += `<td class="px-4 py-2.5 font-mono text-xs truncate max-w-xs">${val}</td>`;
+                });
+                tr.innerHTML = html;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function switchDashboardTab(tabKey) {
+            ['summary', 'pivot', 'charts', 'correlation', 'tests', 'table'].forEach(key => {
+                const tabEl = document.getElementById(`tab-${key}`);
+                const btnEl = document.getElementById(`tab-btn-${key}`);
+                if (key === tabKey) {
+                    tabEl.classList.remove('hidden');
+                    btnEl.className = "px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 text-brand-400 shadow-sm transition-all whitespace-nowrap";
+                } else {
+                    tabEl.classList.add('hidden');
+                    btnEl.className = "px-3.5 py-1.5 text-xs font-semibold rounded-lg text-slate-400 hover:text-slate-200 transition-all whitespace-nowrap";
+                }
+            });
+
+            if (tabKey === 'pivot') renderPivotTable();
+            else if (tabKey === 'charts') renderSelectedChart();
+            else if (tabKey === 'correlation') renderCorrelationMatrix();
+            else if (tabKey === 'table') renderRawDataTable();
+        }
+
+        function openExportModal() {
+            document.getElementById('export-modal').classList.remove('hidden');
+        }
+
+        function closeExportModal() {
+            document.getElementById('export-modal').classList.add('hidden');
+        }
+
+        function exportSummaryStatsCSV() {
+            const numCols = parsedColumns.filter(c => c.type === 'numeric');
+            const rows = numCols.map(c => {
+                const vals = c.numericValues;
+                return {
+                    "変数名": c.name,
+                    "サンプル数(N)": vals.length,
+                    "平均値": ss.mean(vals),
+                    "標準偏差": ss.sampleStandardDeviation(vals),
+                    "中央値": ss.median(vals),
+                    "最小値": ss.min(vals),
+                    "最大値": ss.max(vals)
+                };
+            });
+
+            const csv = Papa.unparse(rows);
+            downloadCSV(csv, 'Descriptive_Statistics_Summary.csv');
+            closeExportModal();
+        }
+
+        function exportCleanedDataCSV() {
+            const csv = Papa.unparse(activeFilteredData);
+            downloadCSV(csv, 'Cleaned_Processed_Dataset.csv');
+            closeExportModal();
+        }
+
+        function downloadCSV(csvContent, fileName) {
+            const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function downloadChartImage() {
+            if (!currentChartInstance) return;
+            const url = currentChartInstance.toBase64Image();
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'Analytics_Chart.png';
+            a.click();
+        }
+
+        function resetApp() {
+            rawCsvData = [];
+            activeFilteredData = [];
+            parsedColumns = [];
+            document.getElementById('dashboard-section').classList.add('hidden');
+            document.getElementById('dropzone-section').classList.remove('hidden');
+            document.getElementById('btn-filter-toggle').classList.add('hidden');
+            document.getElementById('btn-export-hub').classList.add('hidden');
+            document.getElementById('btn-reset-data').classList.add('hidden');
+            showToast('初期状態にクリアしました');
+        }
+
+        function formatNum(num) {
+            if (num === null || num === undefined || isNaN(num)) return '-';
+            return Number(num).toLocaleString(undefined, { maximumFractionDigits: 3 });
+        }
+
+        function showToast(msg) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = "bg-slate-900 border border-slate-700 text-slate-100 text-xs px-4 py-2.5 rounded-xl shadow-2xl flex items-center space-x-2 animate-fade-in";
+            toast.innerHTML = `<i class="fa-solid fa-circle-info text-brand-400"></i><span>${msg}</span>`;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function generateMarketingSampleCSV() {
+            let csv = "User_ID,Age,Gender,Ad_Channel,Ad_Spend_JPY,Purchased_Amount_JPY,CVR_Percent\n";
+            const channels = ['Google Search', 'Meta SNS', 'YouTube Video', 'Email Direct'];
+            const genders = ['Male', 'Female', 'Other'];
+            for (let i = 1; i <= 200; i++) {
+                const age = Math.floor(Math.random() * 40) + 20;
+                const gender = genders[Math.floor(Math.random() * genders.length)];
+                const channel = channels[Math.floor(Math.random() * channels.length)];
+                const spend = Math.floor(Math.random() * 50000) + 5000;
+                const cvr = (Math.random() * 5 + 0.5).toFixed(2);
+                const amount = Math.floor(spend * (cvr / 2) + Math.random() * 10000);
+                csv += `USR_${1000+i},${age},${gender},${channel},${spend},${amount},${cvr}\n`;
+            }
+            return csv;
+        }
+
+        function generateSurveySampleCSV() {
+            let csv = "Respondent_ID,Age_Group,Plan_Type,Satisfaction_Score,NPS_Score,Will_Recommend\n";
+            const plans = ['Basic', 'Pro', 'Enterprise'];
+            const ageGroups = ['20s', '30s', '40s', '50s+'];
+            for (let i = 1; i <= 180; i++) {
+                const plan = plans[Math.floor(Math.random() * plans.length)];
+                const age = ageGroups[Math.floor(Math.random() * ageGroups.length)];
+                const sat = Math.floor(Math.random() * 3) + 3;
+                const nps = Math.floor(Math.random() * 5) + 5;
+                const recommend = nps >= 8 ? 'Yes' : 'No';
+                csv += `RES_${2000+i},${age},${plan},${sat},${nps},${recommend}\n`;
+            }
+            return csv;
+        }
+
+        function generateExperimentSampleCSV() {
+            let csv = "Subject_ID,Condition_Group,Pre_Score,Post_Score,Reaction_Time_ms,Stress_Index\n";
+            const groups = ['Control', 'Treatment_A', 'Treatment_B'];
+            for (let i = 1; i <= 150; i++) {
+                const grp = groups[Math.floor(Math.random() * groups.length)];
+                const pre = Math.floor(Math.random() * 30) + 50;
+                const boost = grp === 'Treatment_A' ? 15 : (grp === 'Treatment_B' ? 22 : 3);
+                const post = pre + boost + Math.floor(Math.random() * 10 - 5);
+                const rt = Math.floor(Math.random() * 200) + 350 - (grp !== 'Control' ? 40 : 0);
+                const stress = (Math.random() * 4 + 1).toFixed(2);
+                csv += `SUBJ_${3000+i},${grp},${pre},${post},${rt},${stress}\n`;
+            }
+            return csv;
+        }
+    </script>
+</body>
+</html>
